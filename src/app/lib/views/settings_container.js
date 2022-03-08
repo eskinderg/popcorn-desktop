@@ -1,6 +1,7 @@
 (function (App) {
     'use strict';
-    var waitComplete,
+    var clipboard = nw.Clipboard.get(),
+        waitComplete,
         oldTmpLocation,
         oldDownloadsLocation,
         that;
@@ -41,16 +42,13 @@
             'click #unauthTrakt': 'disconnectTrakt',
             'click #authOpensubtitles': 'connectOpensubtitles',
             'click #unauthOpensubtitles': 'disconnectOpensubtitles',
+            'click .reset-tvshow': 'resettvshow',
             'change #tmpLocation': 'updateCacheDirectory',
             'change #downloadsLocation': 'updateDownloadsDirectory',
             'click #syncTrakt': 'syncTrakt',
             'click .qr-code': 'generateQRcode',
             'click .set-current-filter': 'saveFilter',
-            'click .reset-current-filter': 'resetFilter',
-            'click .update-dht': 'updateDht',
-            'mousedown #customMoviesServer': 'showFullDatalist',
-            'mousedown #customSeriesServer': 'showFullDatalist',
-            'mousedown #customAnimeServer': 'showFullDatalist'
+            'click .reset-current-filter': 'resetFilter'
         },
 
         onAttach: function () {
@@ -102,12 +100,7 @@
 
         rightclick_field: function (e) {
             e.preventDefault();
-            var menu;
-            if (/customMoviesServer|customSeriesServer|customAnimeServer/.test(e.target.id)) {
-                menu = new this.altcontext_Menu(i18n.__('Cut'), i18n.__('Copy'), i18n.__('Paste'), e.target.id);
-            } else {
-                menu = new this.context_Menu(i18n.__('Cut'), i18n.__('Copy'), i18n.__('Paste'), e.target.id);
-            }
+            var menu = new this.context_Menu(i18n.__('Cut'), i18n.__('Copy'), i18n.__('Paste'), e.target.id);
             menu.popup(e.originalEvent.x, e.originalEvent.y);
         },
 
@@ -138,52 +131,7 @@
             menu.append(cut);
             menu.append(copy);
             menu.append(paste);
-            return menu;
-        },
 
-        altcontext_Menu: function (cutLabel, copyLabel, pasteLabel, field) {
-            var menu = new nw.Menu(),
-                clipboard = nw.Clipboard.get(),
-                text = $('#' + field).val(),
-
-                cut = new nw.MenuItem({
-                    label: cutLabel || 'Cut',
-                    click: function () {
-                        text = $('#' + field).val();
-                        clipboard.set(text, 'text');
-                        $('.notification_alert').text(i18n.__('The API Server URL(s) was copied to the clipboard')).fadeIn('fast').delay(2500).fadeOut('fast');
-                        $('#' + field).val('');
-                    }
-                }),
-
-                copy = new nw.MenuItem({
-                    label: copyLabel || 'Copy',
-                    click: function () {
-                        text = $('#' + field).val();
-                        clipboard.set(text, 'text');
-                        $('.notification_alert').text(i18n.__('The API Server URL(s) was copied to the clipboard')).fadeIn('fast').delay(2500).fadeOut('fast');
-                    }
-                }),
-
-                paste = new nw.MenuItem({
-                    label: pasteLabel || 'Paste',
-                    click: function () {
-                        document.execCommand('paste');
-                    }
-                });
-
-                $('#' + field).one('blur', function() {
-                    if (text && !$('#' + field).val()) {
-                        $('#' + field).val(text);
-                        if (!AdvSettings.get(field)) {
-                            AdvSettings.set(field, text);
-                        }
-                    }
-                });
-
-            menu.append(cut);
-            menu.append(copy);
-            menu.append(paste);
             return menu;
         },
 
@@ -200,6 +148,26 @@
 
         closeSettings: function () {
             App.vent.trigger('settings:close');
+        },
+
+        resettvshow: function () {
+            var value = [{
+                url: 'https:///',
+                strictSSL: true
+            }, {
+                url: 'https:///',
+                strictSSL: true
+            }];
+            App.settings['tvshow'] = value;
+            //save to db
+            App.db.writeSetting({
+                key: 'tvshow',
+                value: value
+            }).then(function () {
+                that.ui.success_alert.show().delay(3000).fadeOut(400);
+            });
+
+            that.syncSetting('tvshow', value);
         },
 
         generateQRcode: function () {
@@ -276,6 +244,19 @@
                     apiDataChanged = true;
                     value = parseInt(field.val());
                     break;
+                case 'tvshow':
+                    value = field.val();
+                    if (value.substr(-1) !== '/') {
+                        value += '/';
+                    }
+                    if (value.substr(0, 8) !== 'https://' && value.substr(0, 7) !== 'http://') {
+                        value = 'http://' + value;
+                    }
+                    value = [{
+                        url: value,
+                        strictSSL: value.substr(0, 8) === 'https://'
+                    }];
+                    break;
                 case 'subtitle_size':
                 case 'tv_detail_jump_to':
                 case 'subtitle_language':
@@ -317,13 +298,9 @@
                 case 'protocolEncryption':
                 case 'contentLangOnly':
                 case 'vpnEnabled':
-                case 'dhtEnable':
                 case 'coversShowRating':
                 case 'torColSearchMore':
                 case 'showSeedboxOnDlInit':
-                case 'showSubmitMeta':
-                case 'expandedSearch':
-                case 'showUndoRBookmark':
                 case 'nativeWindowFrame':
                 case 'translatePosters':
                 case 'translateSynopsis':
@@ -363,7 +340,6 @@
                 case 'streamPort':
                 case 'subtitle_color':
                 case 'maxActiveTorrents':
-                case 'maxUdpReqLimit':
                     value = field.val();
                     break;
                 case 'downloadLimit':
@@ -387,16 +363,6 @@
                     field.val(nvalue + '%');
                     value = nvalue;
                     win.zoomLevel = Math.log(value/100) / Math.log(1.2);
-                    break;
-                case 'preloadNextEpisodeTime':
-                    let nnvalue = field.val().replace(/[^0-9]/gi, '');
-                    if (!nnvalue) {
-                        nnvalue = 1;
-                    } else {
-                        nnvalue = parseInt(nnvalue);
-                    }
-                    field.val(nnvalue);
-                    value = nnvalue;
                     break;
                 case 'tmpLocation':
                     tmpLocationChanged = true;
@@ -480,7 +446,6 @@
                     }
                     break;
                 case 'protocolEncryption':
-                case 'maxUdpReqLimit':
                     this.alertMessageSuccess(true);
                     break;
                 case 'downloadLimit':
@@ -609,9 +574,6 @@
                 case 'multipleExtSubtitles':
                 case 'torColSearchMore':
                 case 'httpApiEnabled':
-                case 'showSubmitMeta':
-                case 'expandedSearch':
-                case 'playNextEpisodeAuto':
                     $('.nav-hor.left li:first').click();
                     App.vent.trigger('settings:show');
                     break;
@@ -631,12 +593,10 @@
                     $('.nav-hor.left li:first').click();
                     App.vent.trigger('settings:show');
                     break;
-                case 'dhtEnable':
-                    if (Settings.dhtEnable) {
-                        this.updateDht('enable');
-                    } else {
-                        this.alertMessageSuccess(true);
-                    }
+                case 'tvshow':
+                    App.Providers.delete('tvshow');
+                    $('.nav-hor.left li:first').click();
+                    App.vent.trigger('settings:show');
                     break;
                 default:
             }
@@ -680,16 +640,6 @@
                 }, 100);
                 that.alertMessageSuccess(false, false, '', i18n.__('Your Default Filters have been reset'));
             }
-        },
-
-        updateDht: function(e) {
-            let updateMode = '';
-            if (e === 'enable') {
-                updateMode = e;
-            } else if (e) {
-                updateMode = 'manual';
-            }
-            App.DhtReader.update(updateMode);
         },
 
         connectTrakt: function (e) {
@@ -763,18 +713,6 @@
             setTimeout(self.render, 200);
         },
 
-        showFullDatalist: function(e) {
-            if (e.button === 0 && (!e.detail || e.detail === 1)) {
-                var tmpDlist = $(e.target).val();
-                $(e.target).val('');
-                $(e.target).one('blur', function() {
-                    if (tmpDlist && !$(e.target).val()) {
-                        $(e.target).val(tmpDlist);
-                    }
-                });
-            }
-        },
-
         rebuildBookmarks: function (e) {
             var btn = $(e.currentTarget);
 
@@ -785,36 +723,30 @@
             this.alertMessageWait(i18n.__('We are rebuilding your database'));
 
             Database.getAllBookmarks()
-                .then(async function (data) {
+                .then(function (data) {
                     let movieProvider = App.Config.getProviderForType('movie')[0];
                     let showProvider = App.Config.getProviderForType('tvshow')[0];
-                    for (let n in data) {
-                        let item = data[n];
+                    for (let item of data) {
                         if (item.type === 'movie') {
-                            await movieProvider.fetch({keywords: item.imdb_id, page:1}).then(function (movies) {
+                            movieProvider.fetch({keywords: item.imdb_id}).then(function (movies) {
                                 if (movies.results.length !== 1) {
                                     return;
                                 }
                                 let movie = movies.results[0];
                                 Database.deleteMovie(item.imdb_id);
-                                movie.providers = {};
-                                movie.providers.torrent = movieProvider;
+                                movie.providers = [movieProvider.name];
                                 Database.addMovie(movie);
                             });
                         }
                         if (item.type === 'show') {
-                            await showProvider.detail(item.imdb_id, {
+                            showProvider.detail(item.imdb_id, {
                                 contextLocale: App.settings.contextLanguage || App.settings.language
                             }).then(function (show) {
                                     Database.deleteTVShow(item.imdb_id);
-                                    show.providers = {};
-                                    show.providers.torrent = showProvider;
+                                    show.providers = [showProvider.name];
                                     Database.addTVShow(show);
                                 });
                         }
-                        that.alertMessageWait(i18n.__('Rebuilding bookmarks (%s)', n+'/'+data.length));
-                        // api has nginx limit rps
-                        await new Promise(resolve => setTimeout(resolve, 700));
                     }
                     that.alertMessageSuccess(true);
                 });
@@ -1027,7 +959,7 @@
         alertMessageWait: function (waitDesc) {
             App.vent.trigger('notification:show', new App.Model.Notification({
                 title: i18n.__('Please wait') + '...',
-                body: waitDesc,
+                body: waitDesc + '.',
                 type: 'danger'
             }));
         },
@@ -1043,7 +975,7 @@
                 notificationModel.set('showRestart', true);
                 notificationModel.set('body', i18n.__('Please restart your application'));
             } else {
-                notificationModel.attributes.autoclose = true;
+                notificationModel.attributes.autoclose = 4000;
             }
 
             // Open the notification

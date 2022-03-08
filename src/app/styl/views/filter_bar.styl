@@ -12,9 +12,8 @@
     background-color: $FilterBarBg
     -webkit-user-select: none
     position: absolute
-    top: $TitleHeight
+    top: 0px
     height: $FilterBarHeight
-    box-shadow: $TopBarShadow
 
     .source
         box-sizing: content-box
@@ -121,7 +120,7 @@
                 padding: 3px 5px
                 font-size: 1.2em
 
-            &.edited input, input:focus, input.expanded
+            &.edited input, input:focus
                 width: 180px
                 background-color: $SearchBoxBg
                 color: $FilterBarText

@@ -51,7 +51,7 @@
                   App.WebTorrent.add(data, {
                       path      : App.settings.tmpLocation,
                       maxConns  : 10,
-                      dht       : { concurrency: parseInt(Settings.maxUdpReqLimit, 10) || 16 },
+                      dht       : true,
                       secure    : Settings.protocolEncryption || false,
                       announce  : Settings.trackers.forced,
                       tracker   : Settings.trackers.forced
@@ -88,7 +88,7 @@
                   App.WebTorrent.add(data, {
                       path      : App.settings.downloadsLocation,
                       maxConns  : 10,
-                      dht       : { concurrency: parseInt(Settings.maxUdpReqLimit, 10) || 16 },
+                      dht       : true,
                       secure    : Settings.protocolEncryption || false,
                       announce  : Settings.trackers.forced,
                       tracker   : Settings.trackers.forced
@@ -165,7 +165,7 @@
                         maxConns     : parseInt(Settings.connectionLimit, 10) || 55,
                         downloadLimit: parseInt(parseFloat(Settings.downloadLimit, 10) * parseInt(Settings.maxLimitMult, 10)) || -1,
                         uploadLimit  : parseInt(parseFloat(Settings.uploadLimit, 10) * parseInt(Settings.maxLimitMult, 10)) || -1,
-                        dht          : { concurrency: parseInt(Settings.maxUdpReqLimit, 10) || 16 },
+                        dht          : true,
                         secure       : Settings.protocolEncryption || false,
                         tracker      : {
                             announce: Settings.trackers.forced
@@ -283,7 +283,7 @@
                   torrent = App.WebTorrent.add(uri, {
                       path      : path,
                       maxConns  : 10,
-                      dht       : { concurrency: parseInt(Settings.maxUdpReqLimit, 10) || 16 },
+                      dht       : true,
                       secure    : Settings.protocolEncryption || false,
                       announce  : Settings.trackers.forced,
                       tracker   : Settings.trackers.forced
@@ -323,7 +323,7 @@
 
         linkTransferStatus: function () {
             this.torrent.on('download', function () {
-                if (this.torrentModel && this.torrent) {
+                if (this.torrentModel) {
                     this.torrentModel.set('downloadSpeed', Common.fileSize(this.torrent.downloadSpeed) + '/s');
                     this.torrentModel.set('downloaded', Math.round(this.torrent.downloaded).toFixed(2));
                     this.torrentModel.set('downloadedFormatted', Common.fileSize(this.torrent.downloaded));
@@ -334,7 +334,7 @@
             }.bind(this));
 
             this.torrent.on('upload', function () {
-                if (this.torrentModel && this.torrent) {
+                if (this.torrentModel) {
                     this.torrentModel.set('uploadSpeed', Common.fileSize(this.torrent.uploadSpeed) + '/s');
                     this.torrentModel.set('active_peers', this.torrent.numPeers);
                 }
@@ -463,20 +463,16 @@
                     fileSize = file.length;
                     fileName = file.path;
                     file.select();
-                    file.hidden = false;
                 } else {
                 //    file.deselect();
                 }
-            }
-            if (!fileName.startsWith(torrent.path)) {
-                fileName = path.join(torrent.path, fileName);
             }
 
             return {
                 name: path.basename(fileName),
                 size: fileSize,
                 index: fileIndex,
-                path: fileName
+                path: path.join(torrent.path, fileName)
             };
         },
 
@@ -489,13 +485,15 @@
             if (isFormatted) {
                 this.torrentModel.set('video_file', this.selectFile(torrent, fileName));
                 this.handleSubtitles();
-            } else if (isRead) {
-                this.torrentModel.set('video_file', this.selectFile(torrent, fileName));
-                this.lookForMetadata(torrent);
             } else {
-                this.openFileSelector(torrent);
-                this.stopped = true;
-                throw 'interrupt';
+                if (isRead) {
+                    this.torrentModel.set('video_file', this.selectFile(torrent, fileName));
+                    this.lookForMetadata(torrent);
+                } else {
+                    this.openFileSelector(torrent);
+                    this.stopped = true;
+                    throw 'interrupt';
+                }
             }
             return;
         },

@@ -21,7 +21,6 @@ class MovieApi extends Generic {
         results.push({
           type: 'movie',
           imdb_id: movie.imdb_id,
-          tmdb_id: movie.tmdb_id,
           title: movie.title,
           year: movie.year,
           genre: movie.genres,
@@ -66,7 +65,7 @@ class MovieApi extends Generic {
     }
 
     if (filters.keywords) {
-      params.keywords = filters.keywords.trim();
+      params.keywords = this.apiURL[0].includes('popcorn-ru') ? filters.keywords.trim() : filters.keywords.trim().replace(/[^a-zA-Z0-9]|\s/g, '% ');
     }
     if (filters.genre) {
       params.genre = filters.genre;

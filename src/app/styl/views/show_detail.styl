@@ -2,12 +2,13 @@
     display: flex
     position: fixed
     width: 100%
-    padding-top: 67px
+    padding-top: 50px
     background: $BgColor1
     flex-direction: column
 
     .show-header
         width: 100vw
+        padding-bottom: 20px
         /*height: 25vh TODO: responsive header (especially poster)*/
         min-height: 215px
 
@@ -86,18 +87,6 @@
 
                 div.shmi-year
                     cursor: pointer
-
-                div.shmi-tmdb-link
-                    cursor: pointer
-                    opacity: 0.4
-                    transition: opacity .3s ease-in
-
-                    &:hover
-                        opacity: 1
-
-                    &.disabled
-                        cursor: default
-                        opacity: 0.4
 
                 div.shmi-imdb
                     cursor: pointer

@@ -224,14 +224,6 @@
         }
       });
 
-      $('.providerinfo').tooltip({
-        delay: {
-          'show': 2400,
-          'hide': 100
-        },
-        html: true
-      });
-
       if (!this.previousSort) {
         this.previousSort = $('.sorters .active').data('value') || $('.sorters .value').data('value');
       }

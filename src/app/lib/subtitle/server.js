@@ -52,6 +52,7 @@
 
     var SubtitlesServer = {
         start: function (data, cb) {
+            iconv.extendNodeEncodings();
 
             encoding = data.encoding || 'utf8';
             win.debug('SubtitleServer: loading', data.srt || data.vtt);

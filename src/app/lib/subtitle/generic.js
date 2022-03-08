@@ -137,16 +137,11 @@
         },
         convert: function (data, cb) { // Converts .srt's to .vtt's
             try {
-                const srtPath = data.path;
-                const vttPath = srtPath.replace('.srt', '.vtt');
+                var srtPath = data.path;
+                var vttPath = srtPath.replace('.srt', '.vtt');
                 fs.createReadStream(srtPath)
                     .pipe(srt2vtt())
                     .pipe(fs.createWriteStream(vttPath));
-                cb(null, {
-                    vtt: vttPath,
-                    srt: srtPath,
-                    encoding: 'utf8'
-                });
             } catch (e) {
                 cb(e, null);
             }
