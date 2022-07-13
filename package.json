@@ -3,7 +3,7 @@
   "companyName": "Popcorn Time",
   "installIcon": "./src/app/images/popcorntime.ico",
   "unInstallIcon": "./src/app/images/butter_uninstall.ico",
-  "homepage": "http://popcorntime.sh/",
+  "homepage": "https://popcorntime.app/",
   "bugs": "https://github.com/popcorn-official/popcorn-desktop/issues",
   "repository": {
     "type": "git",
@@ -90,7 +90,7 @@
     "socks-proxy-agent": "^6.0.0",
     "srt-to-vtt": "^1.1",
     "tar": "4.4.18",
-    "torrentcollection4": "0.0.9",
+    "torrentcollection5": "1.0.4",
     "trakt.tv": "7.x.x",
     "trakt.tv-images": "5.x.x",
     "trakt.tv-matcher": "7.x.x",

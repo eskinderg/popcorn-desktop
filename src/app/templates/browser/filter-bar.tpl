@@ -1,6 +1,12 @@
 <ul class="nav nav-hor left">
     <% _.each (App.Config.getTabTypes(), function (tab) { %>
-    <li class="source <%= tab.type %>TabShow"><%= i18n.__(tab.name) %></li>
+    <% var providerURL = App.Config.getProviderForType(tab.type)[0].apiURL.slice(0);
+        providerURL.forEach(function(e, index) {
+            providerURL[index] = e.replace(/http:\/\/|https:\/\/|\/$/g, '');
+        });
+        providerURL = encodeURI(providerURL.join('<br>')).replace(/%3Cbr%3E/g, '<br>');
+    %>
+    <li class="source <%= tab.type %>TabShow providerinfo" data-toggle="tooltip" data-placement="bottom" title="<%= providerURL %>"><%= i18n.__(tab.name) %></li>
     <% }); %>
     <li id="filterbar-favorites" class="source"><%= i18n.__("Favorites") %></li>
 </ul>
@@ -27,13 +33,6 @@
     <% }}); %>
 </ul>
 <ul class="nav nav-hor right">
-    <% if (Settings.vpnEnabled) { %>
-    <!-- VPN -->
-    <li>
-        <i id="filterbar-vpn" class="fa fa-unlock vpn-disconnected tooltipped" data-toggle="tooltip" data-placement="bottom" title="<%= i18n.__("Connection Not Secured") %>"></i>
-    </li>
-    <%}%>
-
     <li>
         <div class="right search">
             <form>
@@ -43,7 +42,7 @@
         </div>
     </li>
     <!-- Watchlist -->
-    <% if (Settings.activateWatchlist) { %>
+    <% if (Settings.activateWatchlist && App.Trakt.authenticated) { %>
     <li style="display:block">
     <% } else { %>
     <li style="display:none">
@@ -76,11 +75,6 @@
     <li style="display:none">
     <% } %>
         <i id="filterbar-tempf" class="fa fa-folder-open about tooltipped" data-toggle="tooltip" data-placement="bottom" title="<%= i18n.__("Cache Folder") %>"></i>
-    </li>
-
-    <!-- About -->
-    <li>
-        <i id="filterbar-about" class="fa fa-info-circle about tooltipped" data-toggle="tooltip" data-placement="bottom" title="<%= i18n.__("About") %>"></i>
     </li>
 
     <!-- Settings -->

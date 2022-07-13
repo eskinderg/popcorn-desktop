@@ -19,6 +19,16 @@
             e.preventDefault();
             Mousetrap.unpause();
             AdvSettings.set('disclaimerAccepted', 1);
+            if (document.getElementById('dhtEnableFR').checked) {
+                App.DhtReader.update();
+                App.vent.trigger('notification:show', new App.Model.Notification({
+                    title: i18n.__('Please wait') + '...',
+                    body: i18n.__('Updating the API Server URLs'),
+                    type: 'danger'
+                }));
+            } else {
+                App.DhtReader.updateOld();
+            }
             App.vent.trigger('disclaimer:close');
         },
 

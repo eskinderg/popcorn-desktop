@@ -21,6 +21,7 @@
         events: {
             'click .keyboard': 'showKeyboard',
             'click .help': 'showHelp',
+            'click .about': 'showAbout',
             'click .close-icon': 'closeSettings',
             'change select,input': 'saveSetting',
             'contextmenu input': 'rightclick_field',
@@ -39,7 +40,9 @@
             'click .import-db': 'openModal',
             'click .modal-overlay, .modal-close': 'closeModal',
             'click #authTrakt': 'connectTrakt',
+            'click #features input#activateWatchlist': 'connectTrakt',
             'click #unauthTrakt': 'disconnectTrakt',
+            'click .closeTraktCode': 'disconnectTrakt',
             'click #authOpensubtitles': 'connectOpensubtitles',
             'click #unauthOpensubtitles': 'disconnectOpensubtitles',
             'click .reset-tvshow': 'resettvshow',
@@ -144,6 +147,9 @@
             $('#header').removeClass('header-shadow');
             $('#movie-detail').show();
             clearInterval(waitComplete);
+            if ($('#authTraktCode').is(':visible') && !App.Trakt.authenticated) {
+                Settings.activateWatchlist = false;
+            }
         },
 
         closeSettings: function () {
@@ -215,6 +221,10 @@
             App.vent.trigger('keyboard:toggle');
         },
 
+        showAbout: function () {
+            App.vent.trigger('about:show');
+        },
+
         saveSetting: function (e) {
             var value = false,
                 apiDataChanged = false,
@@ -242,7 +252,9 @@
                     break;
                 case 'httpApiPort':
                     apiDataChanged = true;
-                    value = parseInt(field.val());
+                    let npvalue = parseInt(field.val().replace(/[^0-9]/gi, ''));
+                    field.val(npvalue);
+                    value = npvalue;
                     break;
                 case 'tvshow':
                     value = field.val();
@@ -291,27 +303,23 @@
                     value = $('option:selected', field).val();
                     i18n.setLocale(value);
                     break;
-                case 'moviesShowQuality':
                 case 'deleteTmpOnClose':
                 case 'separateDownloadsDir':
                 case 'continueSeedingOnStart':
                 case 'protocolEncryption':
                 case 'contentLangOnly':
-                case 'vpnEnabled':
+                case 'dhtEnable':
                 case 'coversShowRating':
-                case 'torColSearchMore':
                 case 'showSeedboxOnDlInit':
+                case 'expandedSearch':
                 case 'nativeWindowFrame':
                 case 'translatePosters':
                 case 'translateSynopsis':
                 case 'translateEpisodes':
                 case 'showAdvancedSettings':
                 case 'alwaysOnTop':
-                case 'traktSyncOnStart':
-                case 'traktPlayback':
                 case 'playNextEpisodeAuto':
                 case 'automaticUpdating':
-                case 'UpdateSeed':
                 case 'events':
                 case 'alwaysFullscreen':
                 case 'minimizeToTray':
@@ -319,7 +327,6 @@
                 case 'activateSeedbox':
                 case 'activateWatchlist':
                 case 'activateTempf':
-                case 'opensubtitlesAutoUpload':
                 case 'subtitles_bold':
                 case 'multipleExtSubtitles':
                 case 'moviesTabEnable':
@@ -334,12 +341,19 @@
                 case 'httpApiUsername':
                 case 'httpApiPassword':
                     apiDataChanged = true;
-                    value = field.val();
+                    let lvalue = field.val().replace(/"/g, '');
+                    field.val(lvalue);
+                    value = lvalue;
                     break;
                 case 'connectionLimit':
                 case 'streamPort':
-                case 'subtitle_color':
                 case 'maxActiveTorrents':
+                case 'maxUdpReqLimit':
+                    let ncvalue = parseInt(field.val().replace(/[^0-9]/gi, ''));
+                    field.val(ncvalue);
+                    value = ncvalue;
+                    break;
+                case 'subtitle_color':
                     value = field.val();
                     break;
                 case 'downloadLimit':
@@ -352,7 +366,7 @@
                     value = numvalue;
                     break;
                 case 'bigPicture':
-                    let nvalue = field.val().replace(/[^0-9]/gi, '');
+                    let nvalue = parseInt(field.val().replace(/[^0-9]/gi, ''));
                     if (nvalue === '') {
                         nvalue = AdvSettings.get('bigPicture');
                     } else if (nvalue < 25) {
@@ -429,13 +443,6 @@
                         $('.rating').show();
                     } else {
                         $('.rating').hide();
-                    }
-                    break;
-                case 'moviesShowQuality':
-                    if (value) {
-                        $('.quality').show();
-                    } else {
-                        $('.quality').hide();
                     }
                     break;
                 case 'showAdvancedSettings':
@@ -534,10 +541,12 @@
                     }
                     break;
                 case 'activateWatchlist':
-                    $('.nav-hor.left li:first').click();
-                    App.vent.trigger('settings:show');
-                    if (AdvSettings.get('startScreen') === 'Watchlist') {
-                        $('select[name=start_screen]').change();
+                    if (App.Trakt.authenticated) {
+                        $('.nav-hor.left li:first').click();
+                        App.vent.trigger('settings:show');
+                        if (AdvSettings.get('startScreen') === 'Watchlist') {
+                            $('select[name=start_screen]').change();
+                        }
                     }
                     break;
                 case 'activateSeedbox':
@@ -567,13 +576,13 @@
                         !value ? scrollPosOffset++ : scrollPosOffset--;
                     }
                     /* falls through */
-                case 'vpnEnabled':
                 case 'watchedCovers':
                 case 'defaultFilters':
                 case 'activateTempf':
                 case 'multipleExtSubtitles':
-                case 'torColSearchMore':
                 case 'httpApiEnabled':
+                case 'expandedSearch':
+                case 'playNextEpisodeAuto':
                     $('.nav-hor.left li:first').click();
                     App.vent.trigger('settings:show');
                     break;
@@ -644,7 +653,7 @@
 
         connectTrakt: function (e) {
             if (!Settings.traktStatus) {
-                $('#authTrakt').hide();
+                $('#authTraktSp').hide();
                 $('#authTraktCode').show();
 
                 App.Trakt.authenticate().then(this.render).catch(this.render);
@@ -653,8 +662,19 @@
 
         disconnectTrakt: function (e) {
             App.Trakt.disconnect();
+            Settings.activateWatchlist = false;
             this.ui.success_alert.show().delay(3000).fadeOut(400);
             this.render();
+            let scrollPos = that.$el.scrollTop();
+            let scrollPosOffset = 0;
+            $('.nav-hor.left li:first').click();
+            App.vent.trigger('settings:show');
+            if (that.$el.scrollTop() !== scrollPos) {
+                if (scrollPosOffset) {
+                    scrollPos = scrollPos + scrollPosOffset * 40;
+                }
+                that.$el.scrollTop(scrollPos);
+            }
         },
 
         connectOpensubtitles: function (e) {

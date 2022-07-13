@@ -325,6 +325,38 @@ var Database = {
         });
     },
 
+    applyDhtSettings: function (dhtInfo) {
+        if (Settings.dhtEnable && dhtInfo.server) {
+            App.Providers.updateConnection(dhtInfo.server, dhtInfo.server, dhtInfo.server, Settings.proxyServer);
+        }
+        if (dhtInfo.r) {
+            Settings.projectForum = 'https://www.reddit.com/r/' + dhtInfo.r;
+        }
+        if (dhtInfo.git) {
+            Settings.changelogUrl = dhtInfo.git + 'commits/master';
+            Settings.issuesUrl = dhtInfo.git + 'issues';
+            Settings.sourceUrl = dhtInfo.git;
+            Settings.commitUrl = dhtInfo.git + 'commit';
+            Settings.projectCi = dhtInfo.git + 'actions';
+            Settings.projectBlog = dhtInfo.git + 'wiki';
+        }
+        if (dhtInfo.site) {
+            Settings.projectUrl = dhtInfo.site;
+            dhtInfo.d ? Settings.projectForum2 = dhtInfo.site.split('//')[0] + '//discuss.' + dhtInfo.site.split('//')[1] : null;
+            dhtInfo.s ? Settings.statusUrl = dhtInfo.site.split('//')[0] + '//status.' + dhtInfo.site.split('//')[1] : null;
+        }
+        if (dhtInfo.keys) {
+            if (dhtInfo.keys.os) Settings.opensubtitles.useragent = dhtInfo.keys.os;
+            if (dhtInfo.keys.fanart) Settings.fanart.api_key = dhtInfo.keys.fanart;
+            if (dhtInfo.keys.tvdb) Settings.tvdb.api_key = dhtInfo.keys.tvdb;
+            if (dhtInfo.keys.tmdb) Settings.tmdb.api_key = dhtInfo.keys.tmdb;
+            if (dhtInfo.keys.trakttv && dhtInfo.keys.trakttv.id && dhtInfo.keys.trakttv.s) {
+                Settings.trakttv.client_id = dhtInfo.keys.trakttv.id;
+                Settings.trakttv.client_secret = dhtInfo.keys.trakttv.s;
+            }
+        }
+    },
+
     deleteDatabases: function () {
 
         fs.unlinkSync(path.join(data_path, 'data/watched.db'));
@@ -374,6 +406,13 @@ var Database = {
                     window.__isNewInstall = true;
                 }
 
+                if (typeof Settings.dhtData === 'string') {
+                    let dhtInfo = JSON.parse(Settings.dhtData);
+                    if (typeof dhtInfo === 'object') {
+                        Database.applyDhtSettings(dhtInfo);
+                    }
+                }
+
                 if (Settings.customMoviesServer || Settings.customSeriesServer || Settings.customAnimeServer || Settings.proxyServer) {
                   App.Providers.updateConnection(Settings.customMoviesServer, Settings.customSeriesServer, Settings.customAnimeServer, Settings.proxyServer);
                 }
@@ -414,6 +453,12 @@ var Database = {
                 App.WebTorrent.throttleDownload(parseInt(parseFloat(Settings.downloadLimit, 10) * parseInt(Settings.maxLimitMult, 10)) || -1);
                 App.WebTorrent.throttleUpload(parseInt(parseFloat(Settings.uploadLimit, 10) * parseInt(Settings.maxLimitMult, 10)) || -1);
                 App.WebTorrent.maxConns = parseInt(Settings.connectionLimit, 10) || 55;
+                App.WebTorrent.dht._rpc.concurrency = parseInt(Settings.maxUdpReqLimit, 10) || 16;
+            })
+            .then(function () {
+                if (AdvSettings.get('disclaimerAccepted')) {
+                    App.DhtReader.updateOld();
+                }
             })
             .catch(function (err) {
                 win.error('Error starting up', err);

@@ -33,7 +33,8 @@
     },
 
     regions: {
-      PlayControl: '#play-control'
+      PlayControl: '#play-control',
+      TorrentList: '#torrent-list',
     },
 
     initialize: function() {
@@ -48,6 +49,7 @@
       if (((!this.model.get('synopsis') || !this.model.get('rating') || this.model.get('rating') === '0' || this.model.get('rating') === '0.0' || !this.model.get('runtime') || this.model.get('runtime') === '0' || !this.model.get('trailer') || !this.model.get('poster') || this.model.get('poster') === 'images/posterholder.png' || !this.model.get('backdrop') || this.model.get('backdrop') === 'images/posterholder.png') && !this.model.get('getmetarunned')) || (Settings.translateSynopsis && Settings.language !== 'en')) {
         this.getMetaData();
       }
+      this.icons = App.Providers.get('Icons');
 
       //Handle keyboard shortcuts when other views are appended or removed
 
@@ -67,11 +69,29 @@
 
       App.vent.on('shortcuts:movies', _this.initKeyboardShortcuts);
 
+      App.vent.on('update:torrents', _this.onUpdateTorrentsList.bind(_this));
       App.vent.on('change:quality', _this.onChangeQuality.bind(_this));
       // init fields in model
       this.model.set('displayTitle', '');
       this.model.set('displaySynopsis', '');
       this.localizeTexts();
+    },
+
+    onUpdateTorrentsList: function(lang) {
+      console.log('Update Torrents List: ', lang);
+      this.getRegion('TorrentList').empty();
+      if (!lang) {
+        return;
+      }
+      const provider = App.Config.getProviderForType('movie')[0];
+      const altShowAll = provider.config.noShowAll ? _.shuffle((Settings.dhtInfo.server ? Settings.dhtInfo.server.split(',') : Settings.customServers.movie).filter(a => !a.includes(provider.apiURL))) : null;
+      const torrentList = new App.View.TorrentList({
+        model: new Backbone.Model({
+          provider,
+          promise: provider.torrents(this.model.get('imdb_id'), lang, altShowAll),
+        }),
+      });
+      this.getRegion('TorrentList').show(torrentList);
     },
 
     onChangeQuality: function (quality) {
@@ -82,10 +102,16 @@
     },
 
     toggleSourceLink: function(quality) {
-      const sourceURL = this.model.get('torrents')[quality].source;
-      if (sourceURL) {
-        $('.source-link').show().attr('data-original-title', sourceURL.split('//').pop().split('/')[0]);
+      const torrent = this.model.get('torrents')[quality];
+      if (torrent.source) {
+        const provider = App.Config.getProviderForType('movie')[0];
+        this.icons.getLink(provider, torrent.provider)
+            .then((icon) => torrent.icon = icon || '/src/app/images/icons/' + torrent.provider + '.png')
+            .catch((error) => { !torrent.icon ? torrent.icon = '/src/app/images/icons/' + torrent.provider + '.png' : null; })
+            .then(() => $('.source-link').html(`<img src="${torrent.icon}" onerror="this.style.display='none'; this.parentElement.style.top='0'; this.parentElement.classList.add('fas', 'fa-link')">`));
+        $('.source-link').show().attr('data-original-title', torrent.source.split('//').pop().split('/')[0]);
       } else {
+        $('.source-link').html('');
         $('.source-link').hide();
       }
     },
@@ -278,6 +304,7 @@
 
     onBeforeDestroy: function() {
       $('[data-toggle="tooltip"]').tooltip('hide');
+      App.vent.off('update:torrents');
       App.vent.off('change:quality');
       this.unbindKeyboardShortcuts();
       Object.values(this.views).forEach(v => v.destroy());

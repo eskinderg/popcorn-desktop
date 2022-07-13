@@ -34,7 +34,6 @@
             this.setModelStates();
             this.isAprilFools();
             this.localizeTexts();
-            this.setQualityDisplayed();
         },
 
         onAttach: function () {
@@ -48,17 +47,6 @@
                     'hide': 100
                 }
             });
-        },
-
-        setQualityDisplayed: function() {
-            let torrents = this.model.get('torrents');
-            if (!App.settings.moviesShowQuality || !torrents) {
-                this.model.set('qualityList', '');
-                return;
-            }
-            let keys = Object.keys(torrents).sort(Common.qualityCollator.compare);
-            keys = keys.filter((key) => key !== '480p' && key !== '3D');
-            this.model.set('qualityList', keys.length ? keys.join('/') : 'HDRip');
         },
 
         localizeTexts: function () {
@@ -226,7 +214,9 @@
 
             var realtype = this.model.get('type');
             var itemtype = realtype.replace('bookmarked', '');
-            var providers = this.model.get('providers') || [App.Providers.get(this.model.get('provider'))];
+            var providerType = itemtype === 'show' ? 'tvshow' : itemtype;
+            var providers = {torrent:App.Config.getProviderForType(providerType)[0]};
+            this.model.set('providers', providers);
             var id = this.model.get(this.model.idAttribute);
 
             var promises = Object.values(providers).map(function (p) {
@@ -388,6 +378,18 @@
                             }
                         });
                     }
+                }.bind(this)).then(function () {
+                        var id = window.setTimeout(function() {}, 0);
+                        while (id--) { window.clearTimeout(id); }
+                        App.vent.trigger('notification:close');
+                        App.vent.trigger('notification:show', new App.Model.Notification({
+                            title: '',
+                            body: '<font size="3">' + this.model.get('title') + ' (' + this.model.get('year') + ')' + '</font><br>' + i18n.__('was removed from bookmarks'),
+                            showClose: true,
+                            autoclose: true,
+                            type: 'info',
+                            buttons: [{ title: i18n.__('Undo'), action: delCache }]
+                        }));
                 }.bind(this));
             } else {
                 this.ui.bookmarkIcon.addClass('selected');
